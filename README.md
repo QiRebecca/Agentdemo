@@ -1,6 +1,6 @@
 # SAGE: Scientific Agent Graph Engine
 
-SAGE is a from-scratch agent runtime for building inspectable long-horizon agent workflows. It demonstrates how an agent system can turn a natural-language goal into a task graph, route context across documents, memory, tools, and skills, execute typed tools, coordinate specialist agents, and emit structured traces for reproducibility.
+SAGE is an agent runtime for building inspectable long-horizon agent workflows. It demonstrates how an agent system can turn a natural-language goal into a task graph, route context across documents, memory, tools, and skills, execute typed tools, coordinate specialist agents, and emit structured traces for reproducibility.
 
 The runtime is implemented in plain Python with explicit state objects, typed tool contracts, local memory, skill manifests, handoff logs, artifact verification, and a pluggable policy layer. A deterministic policy keeps local runs reproducible, while model-backed policies can drive the same execution loop through OpenAI Responses or OpenAI-compatible Chat Completions endpoints.
 
