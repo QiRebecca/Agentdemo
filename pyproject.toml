@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scientific-agent-from-scratch"
+version = "0.1.0"
+description = "A from-scratch scientific-agent runtime demonstrating RAG, memory, tools, skills, and multi-agent orchestration."
+requires-python = ">=3.10"
+readme = "README.md"
+license = { file = "LICENSE" }
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,9 @@
+{
+  "name": "memory_update",
+  "description": "Store a short episodic memory summarising a completed agent run.",
+  "when_to_use": "Use after a run completes or reaches a meaningful checkpoint.",
+  "required_tools": ["write_memory"],
+  "inputs": {"run_summary": "str"},
+  "outputs": {"memory_id": "str"},
+  "validation": ["memory_is_written", "memory_has_source_run_id"]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "context_synthesis",
+  "description": "Summarise retrieved notes and memory into concise task context.",
+  "when_to_use": "Use when a task needs to turn retrieved documents or memory into a compact working context.",
+  "required_tools": ["search_docs", "search_memory"],
+  "inputs": {"retrieved_context": "dict"},
+  "outputs": {"context_summary": "str"},
+  "validation": ["summary_mentions_sources", "summary_is_short"]
+}

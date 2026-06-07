@@ -1,0 +1,9 @@
+{
+  "name": "report_writing",
+  "description": "Write a concise reproducible report from context, skills, tools, and trace.",
+  "when_to_use": "Use when a completed or partial run needs a human-readable report.",
+  "required_tools": ["write_file"],
+  "inputs": {"state": "AgentState"},
+  "outputs": {"report_path": "str"},
+  "validation": ["report_has_goal", "report_has_components", "report_has_reproducibility_notes"]
+}
