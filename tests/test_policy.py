@@ -15,8 +15,8 @@ def test_policy_factory_and_deterministic_decisions():
     selected = policy.select_skills("write report", skills, ["report_writing"])
     assert "report_writing" in selected["selected_names"]
 
-    tool_plan = policy.plan_tool_call("run a safe tool", [{"name": "run_calculation"}])
-    assert tool_plan["tool_name"] == "run_calculation"
+    tool_plan = policy.plan_tool_call("run a safe tool", [{"name": "build_execution_manifest"}])
+    assert tool_plan["tool_name"] == "build_execution_manifest"
 
 
 def test_openai_chat_policy_factory_without_network():

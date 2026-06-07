@@ -10,7 +10,7 @@ from scientific_agent_from_scratch import AgentKernel
 
 DEFAULT_GOAL = (
     "Run a concise agent workflow: retrieve local context, select relevant skills, "
-    "plan and execute one safe typed tool call, write a report, store memory, "
+    "plan and execute a safe typed tool sequence, write a report, store memory, "
     "and verify all run artifacts."
 )
 

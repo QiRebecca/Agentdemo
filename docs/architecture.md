@@ -32,7 +32,7 @@ Both policies feed the same kernel, tools, memory store, skill registry, handoff
 
 RAG in SAGE is not only document retrieval. It is a routing layer over documents, memories, tools, and skills. This makes retrieval part of the agent control plane: the runtime can retrieve factual context from notes, prior run summaries from memory, callable capabilities from the tool registry, and reusable procedures from the skill registry.
 
-The implementation uses deterministic keyword retrieval rather than embeddings or external services. This keeps the public demo reproducible and easy to audit.
+The implementation uses deterministic keyword retrieval rather than embeddings or external services. This keeps local runs reproducible and easy to inspect.
 
 ## Skills As Procedural Memory
 
@@ -47,6 +47,6 @@ Traces are first-class artifacts. A run is considered inspectable only if task c
 - `OrchestratorAgent`: parses the goal and stores a compact working-memory representation.
 - `ResearchAgent`: retrieves context and memory, writes `retrieved_context.json`, and records episodic memory in `memory_writes.jsonl`.
 - `SkillManagerAgent`: retrieves and composes skills, then writes `selected_skills.json`.
-- `BuilderAgent`: plans and executes a typed tool call, recording observations in `tool_calls.jsonl`.
-- `ReporterAgent`: writes `report.md`, a short architecture demo report.
+- `BuilderAgent`: validates skill contracts, builds `execution_manifest.json`, and records observations in `tool_calls.jsonl`.
+- `ReporterAgent`: writes `report.md`, a run report derived from runtime state.
 - `VerifierAgent`: checks required run artifacts and writes `verification.json`.

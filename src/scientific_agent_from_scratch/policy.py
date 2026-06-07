@@ -62,7 +62,7 @@ class DeterministicPolicy(AgentPolicy):
             "success_criteria": [
                 "task graph is created",
                 "context is retrieved",
-                "one typed tool call is executed",
+                "typed architecture tools are executed",
                 "report, memory, trace, and verification artifacts are written",
             ],
         }
@@ -88,9 +88,9 @@ class DeterministicPolicy(AgentPolicy):
         available_tools: list[dict[str, Any]],
     ) -> dict[str, Any]:
         return {
-            "tool_name": "run_calculation",
-            "arguments": {"expression": "2 + 2"},
-            "purpose": "demonstrate typed tool execution",
+            "tool_name": "build_execution_manifest",
+            "arguments": {},
+            "purpose": "build a reproducibility manifest from the current agent run state",
         }
 
     def draft_report(self, state_snapshot: dict[str, Any]) -> str:
@@ -131,7 +131,7 @@ class DeterministicPolicy(AgentPolicy):
                 "An episodic memory summary is written after report generation.",
                 "",
                 "## Reproducibility Notes",
-                "This report is generated from local runtime state. It is an agent framework run report, not a scientific result.",
+                "This report is generated from local runtime state and records the artifacts needed to inspect the run.",
                 "",
             ]
         )
@@ -206,8 +206,8 @@ class OpenAIResponsesPolicy(AgentPolicy):
         allowed_names = [tool["name"] for tool in available_tools]
         decision = self._json_decision(
             (
-                "Plan exactly one safe typed tool call for this agent run. Return JSON only "
-                "with tool_name, arguments, and purpose. Prefer run_calculation when available."
+                "Plan the main safe typed tool step for this agent run. Return JSON only "
+                "with tool_name, arguments, and purpose. Prefer build_execution_manifest when available."
             ),
             {
                 "goal": goal,
@@ -223,15 +223,13 @@ class OpenAIResponsesPolicy(AgentPolicy):
         )
         if decision["tool_name"] not in allowed_names:
             raise PolicyError(f"model selected unavailable tool: {decision['tool_name']}")
-        if decision["tool_name"] == "run_calculation" and "expression" not in decision.get("arguments", {}):
-            decision["arguments"] = {"expression": "2 + 2"}
         return decision
 
     def draft_report(self, state_snapshot: dict[str, Any]) -> str:
         report = self._text_decision(
             (
                 "Write a concise Markdown agent run report from the provided runtime state. "
-                "Do not claim scientific discoveries, benchmarks, clinical results, or production readiness. "
+                "Keep the report focused on runtime state, artifacts, tool observations, and reproducibility. "
                 "Include Goal, Components Exercised, Retrieved Context Summary, Selected Skills, "
                 "Tool Call Summary, Handoffs, Memory Update, and Reproducibility Notes."
             ),
@@ -244,7 +242,7 @@ class OpenAIResponsesPolicy(AgentPolicy):
         text = self._text_decision(
             (
                 "Write one short episodic memory sentence summarizing this completed agent run. "
-                "Do not include private data, API keys, or scientific result claims."
+                "Do not include private data, API keys, or unsupported external claims."
             ),
             state_snapshot,
             max_output_tokens=200,

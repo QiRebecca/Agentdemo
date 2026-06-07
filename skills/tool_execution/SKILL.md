@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Call a registered typed tool and record the observation.
+Call registered typed tools and record observations.
 
 ## Steps
 
-1. Select the tool by name.
+1. Select the tool or tool sequence by name.
 2. Validate required input keys.
 3. Execute the tool.
 4. Normalize success and error outputs.

@@ -18,7 +18,7 @@ class TaskGraphPlanner:
                 ["context_synthesis", "tool_execution", "report_writing", "memory_update"],
             ),
             TaskNode("T5", "plan_tool_usage", ["T4"], "BuilderAgent", [], []),
-            TaskNode("T6", "execute_tool_step", ["T5"], "BuilderAgent", ["run_calculation"], []),
+            TaskNode("T6", "execute_tool_step", ["T5"], "BuilderAgent", ["validate_skill_contracts", "build_execution_manifest"], []),
             TaskNode("T7", "write_report", ["T2", "T4", "T6"], "ReporterAgent", ["write_file"], ["report_writing"]),
             TaskNode("T8", "write_memory", ["T7"], "ResearchAgent", ["write_memory"], ["memory_update"]),
             TaskNode("T9", "verify_run", ["T8"], "VerifierAgent", ["verify_artifacts"], []),

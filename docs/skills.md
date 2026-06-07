@@ -39,6 +39,6 @@ This composition is written to `selected_skills.json` so reviewers can inspect w
 ## Included Skills
 
 - `context_synthesis`: summarize retrieved notes and memory into compact task context.
-- `tool_execution`: plan and execute a typed tool call with validated inputs.
+- `tool_execution`: plan and execute typed architecture tools with validated inputs.
 - `report_writing`: write a concise reproducible report from context, skills, tools, and trace.
 - `memory_update`: store a short episodic memory summarizing a completed run.

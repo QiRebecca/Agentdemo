@@ -14,6 +14,7 @@ def verify_run_artifacts(run_dir: Path | str, required_files: list[str]) -> dict
         "task_graph.json",
         "retrieved_context.json",
         "selected_skills.json",
+        "execution_manifest.json",
         "verification.json",
     }
     for name in required_files:

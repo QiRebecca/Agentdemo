@@ -9,9 +9,9 @@ from scientific_agent_from_scratch import AgentKernel
 
 
 DEFAULT_GOAL = (
-    "Plan and execute a minimal toy computational research workflow: retrieve relevant notes, "
-    "select reusable skills, call one typed tool, write a short reproducible report skeleton, "
-    "save an episodic memory summary, and emit a structured execution trace."
+    "Plan and execute a reproducible agent runtime workflow: retrieve relevant notes, "
+    "select reusable skills, validate skill-tool contracts, build an execution manifest, "
+    "write a run report, save an episodic memory summary, and emit a structured execution trace."
 )
 
 
@@ -44,7 +44,7 @@ def main() -> int:
         "Retrieved context",
         "Retrieved memory",
         "Selected skills",
-        "Executed typed tool call",
+        "Executed typed tool sequence",
         "Wrote report",
         "Wrote memory",
         "Verified run",

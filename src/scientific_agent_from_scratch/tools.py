@@ -139,6 +139,34 @@ class ToolRegistry:
             lambda args: {"value": SafeArithmetic().evaluate(args["expression"])},
         )
         self.register(
+            ToolSpec(
+                "validate_skill_contracts",
+                "Confirm selected skills reference tools registered in the ToolRegistry.",
+                {"selected_skills": "list", "registered_tools": "list"},
+                {"pass": "bool", "missing_tools": "list", "checked_skills": "list"},
+                "read",
+                [],
+            ),
+            self._validate_skill_contracts,
+        )
+        self.register(
+            ToolSpec(
+                "build_execution_manifest",
+                "Build a compact reproducibility manifest from runtime state.",
+                {
+                    "run_id": "str",
+                    "task_graph": "list",
+                    "retrieved_context": "dict",
+                    "selected_skills": "list",
+                    "tool_results": "list",
+                },
+                {"manifest": "dict"},
+                "write",
+                [],
+            ),
+            self._build_execution_manifest,
+        )
+        self.register(
             ToolSpec("write_file", "Write text to a local file path.", {"path": "str", "content": "str"}, {"path": "str", "bytes_written": "int"}, "write", []),
             self._write_file,
         )
@@ -166,6 +194,35 @@ class ToolRegistry:
     def _read_file(self, args: dict[str, Any]) -> dict[str, Any]:
         path = self._resolve_run_path(args["path"])
         return {"content": path.read_text(encoding="utf-8")}
+
+    def _validate_skill_contracts(self, args: dict[str, Any]) -> dict[str, Any]:
+        registered = {tool["name"] for tool in args["registered_tools"]}
+        missing: list[str] = []
+        checked: list[str] = []
+        for skill in args["selected_skills"]:
+            checked.append(str(skill.get("name", "unknown")))
+            for tool_name in skill.get("required_tools", []):
+                if tool_name not in registered and tool_name not in missing:
+                    missing.append(tool_name)
+        return {"pass": not missing, "missing_tools": missing, "checked_skills": checked}
+
+    def _build_execution_manifest(self, args: dict[str, Any]) -> dict[str, Any]:
+        context = args["retrieved_context"]
+        manifest = {
+            "run_id": args["run_id"],
+            "task_count": len(args["task_graph"]),
+            "selected_skill_count": len(args["selected_skills"]),
+            "retrieved_document_count": len(context.get("documents", [])),
+            "retrieved_memory_count": len(context.get("memories", [])),
+            "tool_result_count": len(args["tool_results"]),
+            "artifact_summary": {
+                "has_task_graph": bool(args["task_graph"]),
+                "has_retrieved_context": bool(context),
+                "has_selected_skills": bool(args["selected_skills"]),
+            },
+            "deterministic": True,
+        }
+        return {"manifest": manifest}
 
     def _resolve_run_path(self, path_value: str) -> Path:
         path = Path(path_value)

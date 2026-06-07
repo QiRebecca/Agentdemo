@@ -9,6 +9,7 @@ REQUIRED_FILES = [
     "task_graph.json",
     "retrieved_context.json",
     "selected_skills.json",
+    "execution_manifest.json",
     "tool_calls.jsonl",
     "handoffs.jsonl",
     "memory_writes.jsonl",
@@ -28,6 +29,9 @@ def test_architecture_demo(tmp_path):
     assert verification["pass"] is True
     run_config = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
     assert run_config["policy"]["name"] == "deterministic"
+    manifest = json.loads((run_dir / "execution_manifest.json").read_text(encoding="utf-8"))
+    assert manifest["run_id"] == state.run_id
+    assert manifest["selected_skill_count"] >= 1
     trace_events = [
         json.loads(line)["event_type"]
         for line in (run_dir / "trace.jsonl").read_text(encoding="utf-8").splitlines()

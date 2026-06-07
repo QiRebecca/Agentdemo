@@ -107,13 +107,43 @@ class BuilderAgent(BaseAgent):
             kernel.trace.append("tool_planned", self.name, task.task_id, "success", state.goal, json.dumps(plan, sort_keys=True), metadata={"policy": kernel.policy.name})
             return plan
         if task.description == "execute_tool_step":
-            plan = state.working_memory.get("tool_plan", {"tool_name": "run_calculation", "arguments": {"expression": "2 + 2"}})
-            call = ToolCall(plan["tool_name"], plan["arguments"], task.task_id, self.name)
-            kernel.trace.append("tool_called", self.name, task.task_id, "started", call.tool_name, json.dumps(call.arguments, sort_keys=True))
-            result = kernel.tool_registry.call(call)
-            state.tool_results.append(result.to_dict())
-            kernel.trace.append("tool_observed", self.name, task.task_id, result.status, call.tool_name, json.dumps(result.to_dict(), sort_keys=True), str(Path(state.run_dir) / "tool_calls.jsonl"))
-            return {"tool_call": call.to_dict(), "tool_result": result.to_dict()}
+            validation_call = ToolCall(
+                "validate_skill_contracts",
+                {"selected_skills": state.selected_skills, "registered_tools": kernel.tool_registry.list_tools()},
+                task.task_id,
+                self.name,
+            )
+            kernel.trace.append("tool_called", self.name, task.task_id, "started", validation_call.tool_name, "validate selected skill tool contracts")
+            validation_result = kernel.tool_registry.call(validation_call)
+            state.tool_results.append(validation_result.to_dict())
+            kernel.trace.append("tool_observed", self.name, task.task_id, validation_result.status, validation_call.tool_name, json.dumps(validation_result.to_dict(), sort_keys=True), str(Path(state.run_dir) / "tool_calls.jsonl"))
+
+            manifest_args = {
+                "run_id": state.run_id,
+                "task_graph": [node.to_dict() for node in state.task_graph],
+                "retrieved_context": state.retrieved_context,
+                "selected_skills": state.selected_skills,
+                "tool_results": state.tool_results,
+            }
+            manifest_call = ToolCall("build_execution_manifest", manifest_args, task.task_id, self.name)
+            kernel.trace.append(
+                "tool_called",
+                self.name,
+                task.task_id,
+                "started",
+                manifest_call.tool_name,
+                "build_execution_manifest(run_id, task_graph, retrieved_context, selected_skills)",
+            )
+            manifest_result = kernel.tool_registry.call(manifest_call)
+            state.tool_results.append(manifest_result.to_dict())
+            manifest = manifest_result.output.get("manifest", {})
+            write_json(Path(state.run_dir) / "execution_manifest.json", manifest)
+            state.generated_artifacts.append(str(Path(state.run_dir) / "execution_manifest.json"))
+            kernel.trace.append("tool_observed", self.name, task.task_id, manifest_result.status, manifest_call.tool_name, json.dumps(manifest_result.to_dict(), sort_keys=True), str(Path(state.run_dir) / "execution_manifest.json"))
+            return {
+                "tool_calls": [validation_call.to_dict(), manifest_call.to_dict()],
+                "tool_results": [validation_result.to_dict(), manifest_result.to_dict()],
+            }
         raise ValueError(f"BuilderAgent cannot handle {task.description}")
 
 
@@ -139,6 +169,7 @@ class VerifierAgent(BaseAgent):
         "retrieved_context.json",
         "selected_skills.json",
         "tool_calls.jsonl",
+        "execution_manifest.json",
         "handoffs.jsonl",
         "memory_writes.jsonl",
         "trace.jsonl",

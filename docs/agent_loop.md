@@ -27,7 +27,7 @@ Each step updates explicit runtime state or writes an inspectable artifact. With
   "actor": "BuilderAgent",
   "task_id": "T6",
   "status": "started",
-  "input_summary": "run_calculation(expression='2 + 2')"
+  "input_summary": "build_execution_manifest(run_id, task_graph, retrieved_context, selected_skills)"
 }
 ```
 

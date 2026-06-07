@@ -1,36 +1,185 @@
 # SAGE: Scientific Agent Graph Engine
 
-SAGE is a small, from-scratch agent framework for running inspectable long-horizon LLM-agent workflows: task-graph planning, multi-index retrieval, local memory, typed tool execution, reusable skills, specialist-agent handoff, structured tracing, runtime verification, and pluggable policy backends.
+SAGE is a from-scratch agent runtime for building inspectable long-horizon agent workflows. It demonstrates how an agent system can turn a natural-language goal into a task graph, route context across documents, memory, tools, and skills, execute typed tools, coordinate specialist agents, and emit structured traces for reproducibility.
 
-This repository is architecture-focused but runnable. The default deterministic policy runs locally without API keys, while the optional OpenAI policy uses the same runtime interfaces to make real model-backed planning, skill-selection, tool-planning, report-writing, and memory-summary decisions. SAGE is not a domain-specific scientific discovery project, not a benchmark-result repository, and not a wrapper around an external agent framework.
+The runtime is implemented in plain Python with explicit state objects, typed tool contracts, local memory, skill manifests, handoff logs, and artifact verification. A deterministic policy keeps local runs reproducible, while pluggable model-backed policies can drive the same execution loop through OpenAI Responses or OpenAI-compatible Chat Completions endpoints.
 
-## What This Demonstrates
+## Execution Model
 
-- Agent kernel from scratch: explicit state management, task execution, and run lifecycle.
-- Task-graph planning: a natural-language goal is converted into an executable DAG.
-- Multi-index retrieval: context is retrieved from documents, memory, tools, and skills.
-- Hierarchical memory: working memory in `AgentState`, episodic memory in JSONL, and procedural memory as reusable skills.
-- Typed tool use: tools have schemas, validation, normalized observations, and JSONL call traces.
-- Skill loading and composition: skills are loaded from `manifest.json` + `SKILL.md`, retrieved by relevance, and composed into an execution plan.
-- Specialist-agent handoff: Research, Skill Manager, Builder, Reporter, and Verifier agents exchange explicit state slices.
-- Trace-first execution: every important runtime event is written to `trace.jsonl`.
-- Pluggable policy backends: deterministic local policy by default, with optional OpenAI Responses API and OpenAI-compatible Chat Completions policies.
-- Smoke-tested demo: the local architecture demo is covered by pytest smoke tests.
+1. Parse the user goal into structured state.
+2. Build a task graph.
+3. Retrieve context across documents, memory, tools, and skills.
+4. Select and compose reusable skills.
+5. Execute typed tools through a registry.
+6. Hand off state between specialist agents.
+7. Write a report artifact and episodic memory.
+8. Verify required artifacts.
+9. Emit a structured trace.
 
-## What This Is Not
+```text
+User Goal
+   |
+   v
+AgentState
+   |
+   v
+TaskGraphPlanner
+   |
+   v
+ContextRouter
+   |-- Document Index
+   |-- Memory Index
+   |-- Skill Index
+   |-- Tool Index
+   |
+   v
+AgentKernel
+   |-- ResearchAgent
+   |-- SkillManagerAgent
+   |-- BuilderAgent
+   |-- ReporterAgent
+   |-- VerifierAgent
+   |
+   v
+ToolRegistry + SkillRegistry + MemoryStore
+   |
+   v
+Trace + Run Artifacts
+```
 
-- Not a LangChain, LangGraph, AutoGen, CrewAI, or OpenAI Agents SDK wrapper.
-- Not a chatbot demo.
-- Not a biology-specific project.
-- Not an auditing or benchmark-results repository.
-- Not dependent on external APIs for the default deterministic run.
-- Not allowed to store API keys or private data in the repository.
+```mermaid
+flowchart TD
+    Goal["User Goal"] --> State["AgentState<br/>run_id, goal, working memory, task graph"]
+    State --> Planner["TaskGraphPlanner<br/>deterministic DAG"]
+    Planner --> Kernel["AgentKernel<br/>dependency-ordered execution"]
+
+    Kernel --> Router["ContextRouter"]
+    Router --> Docs["Document Index<br/>notes/*.md"]
+    Router --> Memory["Memory Index<br/>.sage_memory/*.jsonl"]
+    Router --> SkillIndex["Skill Index<br/>manifest.json + SKILL.md"]
+    Router --> ToolIndex["Tool Index<br/>ToolSpec registry"]
+
+    Kernel --> Research["ResearchAgent<br/>context + memory"]
+    Kernel --> SkillMgr["SkillManagerAgent<br/>retrieve + compose skills"]
+    Kernel --> Builder["BuilderAgent<br/>typed tool execution"]
+    Kernel --> Reporter["ReporterAgent<br/>report artifact"]
+    Kernel --> Verifier["VerifierAgent<br/>artifact checks"]
+
+    Builder --> Tools["ToolRegistry<br/>schemas, validation, normalized ToolResult"]
+    SkillMgr --> Skills["SkillRegistry<br/>procedural memory"]
+    Research --> Store["MemoryStore<br/>episodic JSONL"]
+
+    Tools --> Manifest["execution_manifest.json"]
+    Reporter --> Report["report.md"]
+    Verifier --> Verification["verification.json"]
+    Kernel --> Trace["trace.jsonl"]
+    Kernel --> Handoffs["handoffs.jsonl"]
+```
+
+## Runtime Components
+
+| Component | File | Role |
+|---|---|---|
+| Agent kernel | `kernel.py` | Owns the run lifecycle, state transitions, task execution, and trace emission. |
+| Agent state | `state.py` | Defines structured state, task nodes, tool calls, tool results, skills, memories, and handoffs. |
+| Task graph | `task_graph.py` | Converts the goal into an executable dependency graph. |
+| Context router | `context_router.py` | Routes queries across document, memory, skill, and tool indexes. |
+| Retrieval | `rag.py` | Provides deterministic keyword retrieval for inspectable local runs. |
+| Memory store | `memory.py` | Stores episodic memory records in JSONL and supports retrieval. |
+| Tool registry | `tools.py` | Registers typed tools, validates inputs, normalizes outputs, and records calls. |
+| Skill registry | `skills.py` | Loads skill manifests, retrieves relevant skills, and composes skill plans. |
+| Policy layer | `policy.py` | Provides deterministic, OpenAI Responses, and OpenAI-compatible Chat Completions policies. |
+| Handoffs | `handoff.py` | Logs explicit state transfer between specialist agents. |
+| Trace logger | `trace.py` | Writes structured JSONL events for each important runtime step. |
+| Verifier | `verifier.py` | Checks that required artifacts exist and JSON outputs are parseable. |
+
+## Multi-Index Context Routing
+
+SAGE does not use retrieval only as document search. The context router retrieves across four local indexes:
+
+- Documents: architecture notes and task context.
+- Memory: prior episodic records from previous runs.
+- Skills: reusable procedural units loaded from `skills/`.
+- Tools: registered tool specs and usage contracts.
+
+This allows the agent to ask not only “what information is relevant?” but also “what memory, tool, or skill is relevant for the next task?”
+
+## Skills As Procedural Memory
+
+In SAGE, a skill is a lightweight procedural memory unit. Each skill has a `manifest.json` for machine-readable metadata and a `SKILL.md` file for human-readable procedure instructions.
+
+```text
+skills/<skill_name>/
+  manifest.json
+  SKILL.md
+```
+
+Each manifest includes:
+
+- `name`
+- `description`
+- `when_to_use`
+- `required_tools`
+- `inputs`
+- `outputs`
+- `validation`
+
+The `SkillRegistry` can retrieve relevant skills and compose them into an ordered execution plan. This makes skills part of the runtime, not just documentation.
+
+## Typed Tool Runtime
+
+```text
+ToolSpec
+  -> input validation
+  -> execution
+  -> normalized ToolResult
+  -> trace event
+  -> AgentState update
+```
+
+The architecture run exercises deterministic local tools that validate skill/tool contracts and build a reproducibility manifest:
+
+- `validate_skill_contracts`: checks that selected skills reference tools registered in the `ToolRegistry`.
+- `build_execution_manifest`: summarizes run id, task count, selected skills, retrieval counts, tool results, and artifact state.
+
+The lower-level `run_calculation` tool remains available as a compact smoke-test target for typed execution and structured error handling.
+
+## Trace And Reproducibility
+
+Running the architecture workflow creates an ignored local run directory:
+
+```text
+.sage_runs/run_001/
+  run_config.json
+  task_graph.json
+  retrieved_context.json
+  selected_skills.json
+  execution_manifest.json
+  tool_calls.jsonl
+  handoffs.jsonl
+  memory_writes.jsonl
+  trace.jsonl
+  report.md
+  verification.json
+```
+
+Example trace event:
+
+```json
+{
+  "event_type": "tool_called",
+  "actor": "BuilderAgent",
+  "task_id": "T6",
+  "status": "started",
+  "input_summary": "build_execution_manifest(run_id, task_graph, retrieved_context, selected_skills)"
+}
+```
 
 ## Quickstart
 
 ```bash
 python -m pip install -e ".[dev]"
-python examples/run_agent.py
+python examples/run_architecture_demo.py
 python -m pytest -q
 ```
 
@@ -38,18 +187,11 @@ If `python` is not Python 3.10 or newer on your system, use an explicit interpre
 
 ```bash
 python3.10 -m pip install -e ".[dev]"
-python3.10 examples/run_agent.py
+python3.10 examples/run_architecture_demo.py
 python3.10 -m pytest -q
 ```
 
-To run the OpenAI Responses API policy, export a key in your shell and choose the OpenAI policy:
-
-```bash
-export OPENAI_API_KEY="..."
-python examples/run_agent.py --policy openai --model gpt-4.1-mini
-```
-
-To run an OpenAI-compatible Chat Completions provider, set the provider base URL:
+To run with an OpenAI-compatible Chat Completions provider:
 
 ```bash
 export OPENAI_API_KEY="..."
@@ -59,153 +201,48 @@ python examples/run_agent.py \
   --model provider-model-name
 ```
 
-The key is read from the process environment. It should not be written to `.env` or committed.
+The key is read from the process environment and is never required for deterministic local execution.
 
-## Expected Run Output
+## Inspecting A Run
 
-```text
-SAGE agent run
-Policy: deterministic
-Status: completed
-Trace: .sage_runs/run_001/trace.jsonl
-Report: .sage_runs/run_001/report.md
-Verification: passed
-```
+After running the workflow:
 
-## Generated Local Artifacts
+1. Open `.sage_runs/run_001/task_graph.json` to inspect the task DAG.
+2. Open `.sage_runs/run_001/selected_skills.json` to inspect skill retrieval and composition.
+3. Open `.sage_runs/run_001/tool_calls.jsonl` to inspect typed tool execution.
+4. Open `.sage_runs/run_001/handoffs.jsonl` to inspect specialist-agent handoffs.
+5. Open `.sage_runs/run_001/trace.jsonl` to inspect the full event stream.
+6. Open `.sage_runs/run_001/verification.json` to confirm artifact verification.
 
-Running the demo locally creates an ignored run directory:
+## Smoke Tests
 
-```text
-.sage_runs/run_001/
-  run_config.json
-  task_graph.json
-  retrieved_context.json
-  selected_skills.json
-  tool_calls.jsonl
-  handoffs.jsonl
-  memory_writes.jsonl
-  trace.jsonl
-  report.md
-  verification.json
-```
+1. Kernel boot
+2. Context routing
+3. Memory roundtrip
+4. Typed tool call
+5. Skill retrieval and composition
+6. Architecture tool contracts and execution manifest
+7. End-to-end architecture run
 
-These files are not committed to the repository. They are regenerated locally so reviewers can inspect the execution trace themselves.
-
-## Architecture
-
-```text
-User Goal
-   |
-   v
-TaskGraphPlanner
-   |
-   v
-ContextRouter
-   |-- Document RAG
-   |-- Memory RAG
-   |-- Skill RAG
-   |-- Tool RAG
-   |
-   v
-AgentKernel / Orchestrator
-   |-- ResearchAgent
-   |-- SkillManagerAgent
-   |-- BuilderAgent
-   |-- ReporterAgent
-   |-- VerifierAgent
-   |
-   v
-ToolRegistry + SkillRegistry + MemoryStore
-   ^
-   |
-Policy Backend
-   |-- DeterministicPolicy
-   |-- OpenAIResponsesPolicy
-   |-- OpenAIChatCompletionsPolicy
-   |
-   v
-Trace + Local Run Artifacts
-```
-
-The key design choice is that retrieval is part of the agent control plane: SAGE retrieves not only documents, but also relevant memories, tools, and reusable skills.
-
-## Why Deterministic By Default?
-
-The default policy is deterministic so the runtime can be inspected and tested without external APIs, API keys, or nondeterministic model outputs. This keeps the core framework reproducible: state, task graph, retrieval, memory, tools, skills, handoffs, and traces can all be tested independently.
-
-Model-backed policies are attached at the policy layer and reuse the same runtime components. This separation keeps model decisions replaceable while preserving tool validation, memory writes, handoff logging, and trace verification.
-
-## Where An LLM Backend Would Attach
-
-Runtime mechanics are separated from policy decisions. `DeterministicPolicy` is used for local tests and reproducibility. `OpenAIResponsesPolicy` uses the OpenAI Responses API, while `OpenAIChatCompletionsPolicy` supports OpenAI-compatible `/chat/completions` providers. Both model-backed policies can perform goal parsing, skill selection, typed tool planning, report drafting, and memory summarization.
-
-## Code Map
+## Repository Layout
 
 ```text
 src/scientific_agent_from_scratch/
   kernel.py          # runtime core and task execution loop
   state.py           # AgentState, TaskNode, ToolSpec, SkillSpec, MemoryRecord
-  task_graph.py      # deterministic DAG planner for the architecture demo
+  task_graph.py      # deterministic DAG planner for the architecture workflow
   context_router.py  # multi-index retrieval over docs, memory, tools, skills
   rag.py             # deterministic keyword retrieval
   memory.py          # JSONL episodic memory store
   tools.py           # typed tool registry and safe tool execution
   skills.py          # skill loading, retrieval, and composition
+  policy.py          # deterministic and model-backed policy backends
   agents.py          # specialist agents
   handoff.py         # structured handoff logging
   trace.py           # JSONL trace logger
   verifier.py        # artifact verification
-  policy.py          # deterministic and OpenAI-backed policy backends
 ```
 
-## Smoke Tests
+## Design Scope
 
-1. Kernel boot: the runtime initializes with tools and skills.
-2. RAG router: document and skill retrieval return expected matches.
-3. Memory roundtrip: episodic memory can be written and retrieved.
-4. Tool call: typed tool execution validates input and returns structured output.
-5. Skill activation: relevant skills can be retrieved and composed.
-6. End-to-end demo: the architecture demo generates all required artifacts and a passing verification report.
-
-## Reviewer Path
-
-For a quick inspection:
-
-1. Read the architecture diagram above.
-2. Run `python examples/run_agent.py`.
-3. Open `.sage_runs/run_001/trace.jsonl` to inspect execution events.
-4. Open `.sage_runs/run_001/task_graph.json` to inspect the task DAG.
-5. Run `python -m pytest -q` to verify the smoke tests.
-
-## Example Trace Event
-
-```json
-{
-  "event_type": "tool_called",
-  "actor": "BuilderAgent",
-  "task_id": "T6",
-  "status": "started",
-  "input_summary": "run_calculation(expression='2 + 2')"
-}
-```
-
-## Design Principles
-
-- Deterministic by default
-- No external APIs required for deterministic runs
-- Optional model-backed policies through the OpenAI Responses API or compatible Chat Completions providers
-- Explicit state transitions
-- Typed tools
-- Skills as procedural memory
-- Trace-first execution
-- Generated artifacts kept out of git
-- Smoke-tested local demo
-
-## Limitations
-
-- The public demo uses toy notes only.
-- The demo does not claim scientific discoveries or benchmark results.
-- Retrieval is keyword-based for inspectability.
-- Model-backed policies require a valid `OPENAI_API_KEY`.
-- The project is intended as a compact inspectable framework, not a full production platform.
+SAGE is designed as a local, inspectable runtime. The default execution policy is deterministic so that traces and artifacts can be reproduced exactly. The same runtime boundaries support model-backed policies, while the core framework stays dependency-light and easy to inspect.

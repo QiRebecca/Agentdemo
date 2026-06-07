@@ -1,8 +1,8 @@
 {
   "name": "tool_execution",
-  "description": "Plan and execute a typed tool call with validated inputs.",
-  "when_to_use": "Use when the agent needs to call a registered tool and record the observation.",
-  "required_tools": ["run_calculation"],
+  "description": "Plan and execute typed architecture tools with validated inputs.",
+  "when_to_use": "Use when the agent needs to call registered tools and record observations.",
+  "required_tools": ["validate_skill_contracts", "build_execution_manifest"],
   "inputs": {"tool_name": "str", "arguments": "dict"},
   "outputs": {"tool_result": "dict"},
   "validation": ["tool_result_has_status", "tool_call_is_traced"]
