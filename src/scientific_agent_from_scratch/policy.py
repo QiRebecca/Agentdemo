@@ -155,7 +155,9 @@ class OpenAIResponsesPolicy(AgentPolicy):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
             raise PolicyError("OPENAI_API_KEY is required for the OpenAI policy")
-        self.model = model or os.environ.get("SAGE_OPENAI_MODEL", "gpt-4.1-mini")
+        self.model = model or os.environ.get("SAGE_OPENAI_MODEL")
+        if not self.model:
+            raise PolicyError("A model name must be provided via --model or SAGE_OPENAI_MODEL")
         self.timeout = timeout
 
     def parse_goal(self, goal: str) -> dict[str, Any]:
@@ -316,7 +318,9 @@ class OpenAIChatCompletionsPolicy(OpenAIResponsesPolicy):
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
         if not self.api_key:
             raise PolicyError("OPENAI_API_KEY is required for the OpenAI-compatible chat policy")
-        self.model = model or os.environ.get("SAGE_OPENAI_MODEL", "gpt-5.4-mini")
+        self.model = model or os.environ.get("SAGE_OPENAI_MODEL")
+        if not self.model:
+            raise PolicyError("A model name must be provided via --model or SAGE_OPENAI_MODEL")
         self.base_url = (base_url or os.environ.get("SAGE_OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
         self.timeout = timeout
 
