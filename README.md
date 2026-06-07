@@ -1,8 +1,8 @@
 # SAGE: Scientific Agent Graph Engine
 
-SAGE is a small, from-scratch agent runtime for demonstrating the core architecture of long-horizon LLM agents: task-graph planning, multi-index retrieval, local memory, typed tool execution, reusable skills, specialist-agent handoff, structured tracing, and runtime verification.
+SAGE is a small, from-scratch agent framework for running inspectable long-horizon LLM-agent workflows: task-graph planning, multi-index retrieval, local memory, typed tool execution, reusable skills, specialist-agent handoff, structured tracing, runtime verification, and pluggable policy backends.
 
-This repository is intentionally architecture-focused. It is not a domain-specific scientific discovery project, not a benchmark-result repository, and not a wrapper around an external agent framework. The default demo is deterministic and runs locally without API keys, so the runtime can be inspected, tested, and reproduced quickly.
+This repository is architecture-focused but runnable. The default deterministic policy runs locally without API keys, while the optional OpenAI policy uses the same runtime interfaces to make real model-backed planning, skill-selection, tool-planning, report-writing, and memory-summary decisions. SAGE is not a domain-specific scientific discovery project, not a benchmark-result repository, and not a wrapper around an external agent framework.
 
 ## What This Demonstrates
 
@@ -14,6 +14,7 @@ This repository is intentionally architecture-focused. It is not a domain-specif
 - Skill loading and composition: skills are loaded from `manifest.json` + `SKILL.md`, retrieved by relevance, and composed into an execution plan.
 - Specialist-agent handoff: Research, Skill Manager, Builder, Reporter, and Verifier agents exchange explicit state slices.
 - Trace-first execution: every important runtime event is written to `trace.jsonl`.
+- Pluggable policy backends: deterministic local policy by default, with an optional OpenAI Responses API policy.
 - Smoke-tested demo: the local architecture demo is covered by pytest smoke tests.
 
 ## What This Is Not
@@ -22,13 +23,14 @@ This repository is intentionally architecture-focused. It is not a domain-specif
 - Not a chatbot demo.
 - Not a biology-specific project.
 - Not an auditing or benchmark-results repository.
-- Not dependent on external APIs or private data.
+- Not dependent on external APIs for the default deterministic run.
+- Not allowed to store API keys or private data in the repository.
 
 ## Quickstart
 
 ```bash
 python -m pip install -e ".[dev]"
-python examples/run_architecture_demo.py
+python examples/run_agent.py
 python -m pytest -q
 ```
 
@@ -36,26 +38,27 @@ If `python` is not Python 3.10 or newer on your system, use an explicit interpre
 
 ```bash
 python3.10 -m pip install -e ".[dev]"
-python3.10 examples/run_architecture_demo.py
+python3.10 examples/run_agent.py
 python3.10 -m pytest -q
 ```
 
-## Expected Demo Output
+To run the real OpenAI-backed policy, export a key in your shell and choose the OpenAI policy:
+
+```bash
+export OPENAI_API_KEY="..."
+python examples/run_agent.py --policy openai --model gpt-4.1-mini
+```
+
+The key is read from the process environment. It should not be written to `.env` or committed.
+
+## Expected Run Output
 
 ```text
-SAGE architecture demo
-
-[1/9] Parsed goal
-[2/9] Built task graph
-[3/9] Retrieved context
-[4/9] Retrieved memory
-[5/9] Selected skills
-[6/9] Executed typed tool call
-[7/9] Wrote report
-[8/9] Wrote memory
-[9/9] Verified run
-
-Run completed.
+SAGE agent run
+Policy: deterministic
+Status: completed
+Trace: .sage_runs/run_001/trace.jsonl
+Report: .sage_runs/run_001/report.md
 Verification: passed
 ```
 
@@ -104,6 +107,11 @@ AgentKernel / Orchestrator
    |
    v
 ToolRegistry + SkillRegistry + MemoryStore
+   ^
+   |
+Policy Backend
+   |-- DeterministicPolicy
+   |-- OpenAIResponsesPolicy
    |
    v
 Trace + Local Run Artifacts
@@ -113,13 +121,13 @@ The key design choice is that retrieval is part of the agent control plane: SAGE
 
 ## Why Deterministic By Default?
 
-The public demo uses deterministic policies so the runtime can be inspected and tested without external APIs, API keys, or nondeterministic model outputs. The goal of this repository is to expose the agent architecture: state, task graph, retrieval, memory, tools, skills, handoffs, and traces.
+The default policy is deterministic so the runtime can be inspected and tested without external APIs, API keys, or nondeterministic model outputs. This keeps the core framework reproducible: state, task graph, retrieval, memory, tools, skills, handoffs, and traces can all be tested independently.
 
-An LLM backend can be attached later at the policy layer, but the runtime components are intentionally implemented and tested independently.
+The OpenAI policy is attached at the policy layer and reuses the same runtime components. This separation keeps model decisions replaceable while preserving tool validation, memory writes, handoff logging, and trace verification.
 
 ## Where An LLM Backend Would Attach
 
-The deterministic demo separates runtime mechanics from policy decisions. In a model-backed extension, the policy layer could replace deterministic choices for task refinement, tool selection, and report drafting, while reusing the same state, tool, memory, skill, handoff, and trace infrastructure.
+Runtime mechanics are separated from policy decisions. `DeterministicPolicy` is used for local tests and reproducibility. `OpenAIResponsesPolicy` uses the OpenAI Responses API for model-backed goal parsing, skill selection, typed tool planning, report drafting, and memory summarization.
 
 ## Code Map
 
@@ -137,6 +145,7 @@ src/scientific_agent_from_scratch/
   handoff.py         # structured handoff logging
   trace.py           # JSONL trace logger
   verifier.py        # artifact verification
+  policy.py          # deterministic and OpenAI-backed policy backends
 ```
 
 ## Smoke Tests
@@ -153,7 +162,7 @@ src/scientific_agent_from_scratch/
 For a quick inspection:
 
 1. Read the architecture diagram above.
-2. Run `python examples/run_architecture_demo.py`.
+2. Run `python examples/run_agent.py`.
 3. Open `.sage_runs/run_001/trace.jsonl` to inspect execution events.
 4. Open `.sage_runs/run_001/task_graph.json` to inspect the task DAG.
 5. Run `python -m pytest -q` to verify the smoke tests.
@@ -173,7 +182,8 @@ For a quick inspection:
 ## Design Principles
 
 - Deterministic by default
-- No external APIs
+- No external APIs required for deterministic runs
+- Optional model-backed policy through the OpenAI Responses API
 - Explicit state transitions
 - Typed tools
 - Skills as procedural memory
@@ -186,5 +196,5 @@ For a quick inspection:
 - The public demo uses toy notes only.
 - The demo does not claim scientific discoveries or benchmark results.
 - Retrieval is keyword-based for inspectability.
-- The default runtime does not call an LLM backend.
-- The project is intended as an architecture demonstration, not a production agent framework.
+- The OpenAI policy requires a valid `OPENAI_API_KEY`.
+- The project is intended as a compact inspectable framework, not a full production platform.

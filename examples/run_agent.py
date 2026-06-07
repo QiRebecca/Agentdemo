@@ -9,9 +9,9 @@ from scientific_agent_from_scratch import AgentKernel
 
 
 DEFAULT_GOAL = (
-    "Plan and execute a minimal toy computational research workflow: retrieve relevant notes, "
-    "select reusable skills, call one typed tool, write a short reproducible report skeleton, "
-    "save an episodic memory summary, and emit a structured execution trace."
+    "Run a concise agent workflow: retrieve local context, select relevant skills, "
+    "plan and execute one safe typed tool call, write a report, store memory, "
+    "and verify all run artifacts."
 )
 
 
@@ -26,37 +26,27 @@ def next_run_dir(root: Path = Path(".sage_runs")) -> Path:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Run the SAGE architecture demo.")
+    parser = argparse.ArgumentParser(description="Run SAGE with a selected policy backend.")
+    parser.add_argument("--goal", default=DEFAULT_GOAL)
     parser.add_argument("--run-dir", type=Path, default=None)
     parser.add_argument("--policy", choices=["deterministic", "openai"], default="deterministic")
     parser.add_argument("--model", default=None, help="Optional model name for --policy openai.")
     args = parser.parse_args()
 
     run_dir = args.run_dir or next_run_dir()
-    print("SAGE architecture demo\n")
     kernel = AgentKernel(policy_backend=args.policy, model=args.model)
-    state = kernel.run(DEFAULT_GOAL, run_dir=run_dir)
-
-    steps = [
-        "Parsed goal",
-        "Built task graph",
-        "Retrieved context",
-        "Retrieved memory",
-        "Selected skills",
-        "Executed typed tool call",
-        "Wrote report",
-        "Wrote memory",
-        "Verified run",
-    ]
-    for index, step in enumerate(steps, start=1):
-        print(f"[{index}/9] {step}")
+    state = kernel.run(args.goal, run_dir=run_dir)
 
     verification_path = run_dir / "verification.json"
     verification = json.loads(verification_path.read_text(encoding="utf-8")) if verification_path.exists() else {"pass": False}
-    print("\nRun completed." if state.status == "completed" else "\nRun failed.")
+
+    print("SAGE agent run")
+    print(f"Policy: {args.policy}")
+    if args.model:
+        print(f"Model: {args.model}")
+    print(f"Status: {state.status}")
     print(f"Trace: {run_dir / 'trace.jsonl'}")
     print(f"Report: {run_dir / 'report.md'}")
-    print(f"Policy: {args.policy}")
     print(f"Verification: {'passed' if verification.get('pass') else 'failed'}")
     return 0 if state.status == "completed" and verification.get("pass") else 1
 

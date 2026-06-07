@@ -16,6 +16,7 @@ from scientific_agent_from_scratch.agents import (
 from scientific_agent_from_scratch.context_router import ContextRouter, load_note_records
 from scientific_agent_from_scratch.handoff import record_handoff
 from scientific_agent_from_scratch.memory import MemoryStore
+from scientific_agent_from_scratch.policy import AgentPolicy, create_policy
 from scientific_agent_from_scratch.skills import SkillRegistry
 from scientific_agent_from_scratch.state import AgentState, TaskNode
 from scientific_agent_from_scratch.task_graph import TaskGraphPlanner
@@ -24,9 +25,17 @@ from scientific_agent_from_scratch.trace import TraceLogger
 
 
 class AgentKernel:
-    def __init__(self, base_dir: Path | str | None = None, asset_root: Path | str | None = None):
+    def __init__(
+        self,
+        base_dir: Path | str | None = None,
+        asset_root: Path | str | None = None,
+        policy: AgentPolicy | None = None,
+        policy_backend: str = "deterministic",
+        model: str | None = None,
+    ):
         self.project_root = Path(asset_root) if asset_root else Path(__file__).resolve().parents[2]
         self.base_dir = Path(base_dir) if base_dir else Path.cwd()
+        self.policy = policy or create_policy(policy_backend, model=model)
         self.notes_root = self.project_root / "notes"
         self.skills_root = self.project_root / "skills"
         self.memory_store = MemoryStore(self.base_dir / ".sage_memory")
@@ -60,7 +69,16 @@ class AgentKernel:
         self.trace.append("run_started", "AgentKernel", None, "started", goal, state.run_id, str(run_path / "trace.jsonl"))
 
         try:
-            write_json(run_path / "run_config.json", {"run_id": state.run_id, "goal": goal, "runtime": "SAGE deterministic architecture demo"})
+            write_json(
+                run_path / "run_config.json",
+                {
+                    "run_id": state.run_id,
+                    "goal": goal,
+                    "runtime": "SAGE agent framework",
+                    "policy": self.policy.metadata(),
+                },
+            )
+            self.trace.append("policy_selected", "AgentKernel", None, "success", self.policy.name, json.dumps(self.policy.metadata(), sort_keys=True))
             graph = self.planner.plan(goal)
             state.task_graph = graph
             write_json(run_path / "task_graph.json", [node.to_dict() for node in graph])
@@ -69,7 +87,13 @@ class AgentKernel:
                 self._execute_task(task, state)
                 if state.status == "failed":
                     break
-            if state.status != "failed":
+            if state.status == "failed":
+                try:
+                    VerifierAgent().run(TaskNode("T9", "verify_run", [], "VerifierAgent", ["verify_artifacts"], []), state, self)
+                except Exception:
+                    pass
+                self.trace.append("run_finished", "AgentKernel", state.active_task_id, "failed", state.goal, "run failed")
+            else:
                 state.status = "completed"
                 self.trace.append("run_finished", "AgentKernel", None, "completed", state.goal, "run completed")
         except Exception as exc:  # noqa: BLE001 - kernel records failure before returning.

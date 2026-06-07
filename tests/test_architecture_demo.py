@@ -26,6 +26,8 @@ def test_architecture_demo(tmp_path):
         assert (run_dir / name).exists(), name
     verification = json.loads((run_dir / "verification.json").read_text(encoding="utf-8"))
     assert verification["pass"] is True
+    run_config = json.loads((run_dir / "run_config.json").read_text(encoding="utf-8"))
+    assert run_config["policy"]["name"] == "deterministic"
     trace_events = [
         json.loads(line)["event_type"]
         for line in (run_dir / "trace.jsonl").read_text(encoding="utf-8").splitlines()

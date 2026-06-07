@@ -4,7 +4,7 @@ The test suite is intentionally small and local. It verifies that the architectu
 
 1. Kernel boot
 
-   Pass condition: `AgentKernel` initializes with registered tools and loaded skills, and can create an initial `AgentState`.
+   Pass condition: `AgentKernel` initializes with registered tools, loaded skills, a default deterministic policy, and can create an initial `AgentState`.
 
 2. RAG router
 
@@ -25,6 +25,10 @@ The test suite is intentionally small and local. It verifies that the architectu
 6. End-to-end architecture demo
 
    Pass condition: the kernel run completes, writes all required local artifacts, records key trace events, and produces a passing `verification.json`.
+
+7. Policy layer
+
+   Pass condition: the policy factory creates `DeterministicPolicy`, deterministic decisions have the expected shape, and policy metadata appears in `run_config.json`.
 
 Run all smoke tests with:
 

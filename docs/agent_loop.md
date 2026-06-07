@@ -17,7 +17,7 @@ observe
   -> finish
 ```
 
-Each step updates explicit runtime state or writes an inspectable artifact. The loop is deterministic in the public demo so reviewers can inspect state transitions without depending on hidden model calls or external services.
+Each step updates explicit runtime state or writes an inspectable artifact. With `DeterministicPolicy`, the loop is local and reproducible. With `OpenAIResponsesPolicy`, policy decisions are model-backed while the same tool validation, memory write, handoff, trace, and verification infrastructure remains in control.
 
 ## Trace Example
 

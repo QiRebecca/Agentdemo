@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "scientific-agent-from-scratch"
 version = "0.1.0"
-description = "A from-scratch scientific-agent runtime demonstrating RAG, memory, tools, skills, and multi-agent orchestration."
+description = "A from-scratch agent framework with task graphs, retrieval, memory, typed tools, skills, handoffs, tracing, verification, and pluggable policies."
 requires-python = ">=3.10"
 readme = "README.md"
 license = { file = "LICENSE" }

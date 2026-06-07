@@ -144,7 +144,7 @@ class ToolRegistry:
         )
         self.register(
             ToolSpec("read_file", "Read a local text file.", {"path": "str"}, {"content": "str"}, "read", []),
-            lambda args: {"content": Path(args["path"]).read_text(encoding="utf-8")},
+            self._read_file,
         )
         self.register(
             ToolSpec("verify_artifacts", "Verify required run artifacts exist.", {"run_dir": "str", "required_files": "list"}, {"pass": "bool"}, "read", []),
@@ -158,7 +158,28 @@ class ToolRegistry:
         return {"memory_id": record.memory_id, "path": str(self.memory_store._path_for_kind(record.kind))}
 
     def _write_file(self, args: dict[str, Any]) -> dict[str, Any]:
-        path = Path(args["path"])
+        path = self._resolve_run_path(args["path"])
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(args["content"], encoding="utf-8")
         return {"path": str(path), "bytes_written": len(args["content"].encode("utf-8"))}
+
+    def _read_file(self, args: dict[str, Any]) -> dict[str, Any]:
+        path = self._resolve_run_path(args["path"])
+        return {"content": path.read_text(encoding="utf-8")}
+
+    def _resolve_run_path(self, path_value: str) -> Path:
+        path = Path(path_value)
+        if not self.run_dir:
+            return path
+        run_root = self.run_dir.resolve()
+        resolved = path.resolve()
+        if not path.is_absolute():
+            try:
+                resolved.relative_to(run_root)
+            except ValueError:
+                resolved = (self.run_dir / path).resolve()
+        try:
+            resolved.relative_to(run_root)
+        except ValueError as exc:
+            raise PermissionError(f"path is outside run directory: {path}") from exc
+        return resolved
