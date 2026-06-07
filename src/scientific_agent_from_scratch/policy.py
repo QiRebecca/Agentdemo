@@ -286,6 +286,7 @@ class OpenAIResponsesPolicy(AgentPolicy):
             headers={
                 "Authorization": f"Bearer {self.api_key}",
                 "Content-Type": "application/json",
+                "User-Agent": "sage-agent-framework/0.1",
             },
             method="POST",
         )
@@ -304,15 +305,79 @@ class OpenAIResponsesPolicy(AgentPolicy):
         return text
 
 
+class OpenAIChatCompletionsPolicy(OpenAIResponsesPolicy):
+    name = "openai-chat"
+
+    def __init__(
+        self,
+        api_key: str | None = None,
+        model: str | None = None,
+        base_url: str | None = None,
+        timeout: int = 60,
+    ):
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
+        if not self.api_key:
+            raise PolicyError("OPENAI_API_KEY is required for the OpenAI-compatible chat policy")
+        self.model = model or os.environ.get("SAGE_OPENAI_MODEL", "gpt-5.4-mini")
+        self.base_url = (base_url or os.environ.get("SAGE_OPENAI_BASE_URL") or "https://api.openai.com/v1").rstrip("/")
+        self.timeout = timeout
+
+    def metadata(self) -> dict[str, Any]:
+        return {"name": self.name, "model": self.model, "base_url": self.base_url}
+
+    def _text_decision(
+        self,
+        instructions: str,
+        payload: dict[str, Any],
+        max_output_tokens: int,
+    ) -> str:
+        body = {
+            "model": self.model,
+            "messages": [
+                {"role": "system", "content": instructions},
+                {"role": "user", "content": json.dumps(payload, indent=2, sort_keys=True, default=str)},
+            ],
+        }
+        request = urllib.request.Request(
+            f"{self.base_url}/chat/completions",
+            data=json.dumps(body).encode("utf-8"),
+            headers={
+                "Authorization": f"Bearer {self.api_key}",
+                "Content-Type": "application/json",
+                "User-Agent": "sage-agent-framework/0.1",
+            },
+            method="POST",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=self.timeout) as response:
+                data = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            message = _safe_error_message(exc)
+            raise PolicyError(f"Chat Completions request failed: HTTP {exc.code}: {message}") from exc
+        except urllib.error.URLError as exc:
+            raise PolicyError(f"Chat Completions request failed: {exc.reason}") from exc
+
+        try:
+            text = data["choices"][0]["message"]["content"]
+        except (KeyError, IndexError, TypeError) as exc:
+            raise PolicyError("Chat Completions response did not contain message content") from exc
+        if not str(text).strip():
+            raise PolicyError("Chat Completions response returned no text output")
+        return str(text)
+
+
 def create_policy(
     backend: str = "deterministic",
     model: str | None = None,
     api_key: str | None = None,
+    base_url: str | None = None,
 ) -> AgentPolicy:
     if backend == "deterministic":
         return DeterministicPolicy()
     if backend == "openai":
         return OpenAIResponsesPolicy(api_key=api_key, model=model)
+    if backend == "openai-chat":
+        return OpenAIChatCompletionsPolicy(api_key=api_key, model=model, base_url=base_url)
     raise ValueError(f"unknown policy backend: {backend}")
 
 

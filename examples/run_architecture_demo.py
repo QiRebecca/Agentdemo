@@ -28,13 +28,14 @@ def next_run_dir(root: Path = Path(".sage_runs")) -> Path:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run the SAGE architecture demo.")
     parser.add_argument("--run-dir", type=Path, default=None)
-    parser.add_argument("--policy", choices=["deterministic", "openai"], default="deterministic")
-    parser.add_argument("--model", default=None, help="Optional model name for --policy openai.")
+    parser.add_argument("--policy", choices=["deterministic", "openai", "openai-chat"], default="deterministic")
+    parser.add_argument("--model", default=None, help="Optional model name for model-backed policies.")
+    parser.add_argument("--base-url", default=None, help="Optional base URL for --policy openai-chat.")
     args = parser.parse_args()
 
     run_dir = args.run_dir or next_run_dir()
     print("SAGE architecture demo\n")
-    kernel = AgentKernel(policy_backend=args.policy, model=args.model)
+    kernel = AgentKernel(policy_backend=args.policy, model=args.model, base_url=args.base_url)
     state = kernel.run(DEFAULT_GOAL, run_dir=run_dir)
 
     steps = [

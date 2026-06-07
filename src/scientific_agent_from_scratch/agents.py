@@ -153,6 +153,16 @@ class VerifierAgent(BaseAgent):
         result = kernel.tool_registry.call(call)
         verification = result.output
         write_json(verification_path, verification)
+        report_path = Path(state.run_dir) / "report.md"
+        if report_path.exists():
+            status = "passed" if verification.get("pass") else "failed"
+            memory_path = Path(state.run_dir) / "memory_writes.jsonl"
+            with report_path.open("a", encoding="utf-8") as handle:
+                handle.write("\n## Final Verification\n")
+                handle.write(f"Verification: {status}\n")
+                handle.write(f"Memory writes: {'present' if memory_path.exists() else 'missing'}\n")
+                if verification.get("missing_files"):
+                    handle.write(f"Missing files: {', '.join(verification['missing_files'])}\n")
         event_type = "verification_passed" if verification.get("pass") else "verification_failed"
         kernel.trace.append(event_type, self.name, task.task_id, result.status, "required artifacts", json.dumps(verification, sort_keys=True), str(verification_path))
         return verification

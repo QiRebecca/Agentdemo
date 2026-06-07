@@ -29,12 +29,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run SAGE with a selected policy backend.")
     parser.add_argument("--goal", default=DEFAULT_GOAL)
     parser.add_argument("--run-dir", type=Path, default=None)
-    parser.add_argument("--policy", choices=["deterministic", "openai"], default="deterministic")
-    parser.add_argument("--model", default=None, help="Optional model name for --policy openai.")
+    parser.add_argument("--policy", choices=["deterministic", "openai", "openai-chat"], default="deterministic")
+    parser.add_argument("--model", default=None, help="Optional model name for model-backed policies.")
+    parser.add_argument("--base-url", default=None, help="Optional base URL for --policy openai-chat.")
     args = parser.parse_args()
 
     run_dir = args.run_dir or next_run_dir()
-    kernel = AgentKernel(policy_backend=args.policy, model=args.model)
+    kernel = AgentKernel(policy_backend=args.policy, model=args.model, base_url=args.base_url)
     state = kernel.run(args.goal, run_dir=run_dir)
 
     verification_path = run_dir / "verification.json"
@@ -44,6 +45,8 @@ def main() -> int:
     print(f"Policy: {args.policy}")
     if args.model:
         print(f"Model: {args.model}")
+    if args.base_url:
+        print(f"Base URL: {args.base_url}")
     print(f"Status: {state.status}")
     print(f"Trace: {run_dir / 'trace.jsonl'}")
     print(f"Report: {run_dir / 'report.md'}")

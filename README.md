@@ -14,7 +14,7 @@ This repository is architecture-focused but runnable. The default deterministic 
 - Skill loading and composition: skills are loaded from `manifest.json` + `SKILL.md`, retrieved by relevance, and composed into an execution plan.
 - Specialist-agent handoff: Research, Skill Manager, Builder, Reporter, and Verifier agents exchange explicit state slices.
 - Trace-first execution: every important runtime event is written to `trace.jsonl`.
-- Pluggable policy backends: deterministic local policy by default, with an optional OpenAI Responses API policy.
+- Pluggable policy backends: deterministic local policy by default, with optional OpenAI Responses API and OpenAI-compatible Chat Completions policies.
 - Smoke-tested demo: the local architecture demo is covered by pytest smoke tests.
 
 ## What This Is Not
@@ -42,11 +42,21 @@ python3.10 examples/run_agent.py
 python3.10 -m pytest -q
 ```
 
-To run the real OpenAI-backed policy, export a key in your shell and choose the OpenAI policy:
+To run the OpenAI Responses API policy, export a key in your shell and choose the OpenAI policy:
 
 ```bash
 export OPENAI_API_KEY="..."
 python examples/run_agent.py --policy openai --model gpt-4.1-mini
+```
+
+To run an OpenAI-compatible Chat Completions provider, set the provider base URL:
+
+```bash
+export OPENAI_API_KEY="..."
+python examples/run_agent.py \
+  --policy openai-chat \
+  --base-url https://api.example.com/v1 \
+  --model provider-model-name
 ```
 
 The key is read from the process environment. It should not be written to `.env` or committed.
@@ -112,6 +122,7 @@ ToolRegistry + SkillRegistry + MemoryStore
 Policy Backend
    |-- DeterministicPolicy
    |-- OpenAIResponsesPolicy
+   |-- OpenAIChatCompletionsPolicy
    |
    v
 Trace + Local Run Artifacts
@@ -123,11 +134,11 @@ The key design choice is that retrieval is part of the agent control plane: SAGE
 
 The default policy is deterministic so the runtime can be inspected and tested without external APIs, API keys, or nondeterministic model outputs. This keeps the core framework reproducible: state, task graph, retrieval, memory, tools, skills, handoffs, and traces can all be tested independently.
 
-The OpenAI policy is attached at the policy layer and reuses the same runtime components. This separation keeps model decisions replaceable while preserving tool validation, memory writes, handoff logging, and trace verification.
+Model-backed policies are attached at the policy layer and reuse the same runtime components. This separation keeps model decisions replaceable while preserving tool validation, memory writes, handoff logging, and trace verification.
 
 ## Where An LLM Backend Would Attach
 
-Runtime mechanics are separated from policy decisions. `DeterministicPolicy` is used for local tests and reproducibility. `OpenAIResponsesPolicy` uses the OpenAI Responses API for model-backed goal parsing, skill selection, typed tool planning, report drafting, and memory summarization.
+Runtime mechanics are separated from policy decisions. `DeterministicPolicy` is used for local tests and reproducibility. `OpenAIResponsesPolicy` uses the OpenAI Responses API, while `OpenAIChatCompletionsPolicy` supports OpenAI-compatible `/chat/completions` providers. Both model-backed policies can perform goal parsing, skill selection, typed tool planning, report drafting, and memory summarization.
 
 ## Code Map
 
@@ -183,7 +194,7 @@ For a quick inspection:
 
 - Deterministic by default
 - No external APIs required for deterministic runs
-- Optional model-backed policy through the OpenAI Responses API
+- Optional model-backed policies through the OpenAI Responses API or compatible Chat Completions providers
 - Explicit state transitions
 - Typed tools
 - Skills as procedural memory
@@ -196,5 +207,5 @@ For a quick inspection:
 - The public demo uses toy notes only.
 - The demo does not claim scientific discoveries or benchmark results.
 - Retrieval is keyword-based for inspectability.
-- The OpenAI policy requires a valid `OPENAI_API_KEY`.
+- Model-backed policies require a valid `OPENAI_API_KEY`.
 - The project is intended as a compact inspectable framework, not a full production platform.

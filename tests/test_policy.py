@@ -1,4 +1,4 @@
-from scientific_agent_from_scratch.policy import DeterministicPolicy, create_policy
+from scientific_agent_from_scratch.policy import DeterministicPolicy, OpenAIChatCompletionsPolicy, create_policy
 
 
 def test_policy_factory_and_deterministic_decisions():
@@ -17,3 +17,14 @@ def test_policy_factory_and_deterministic_decisions():
 
     tool_plan = policy.plan_tool_call("run a safe tool", [{"name": "run_calculation"}])
     assert tool_plan["tool_name"] == "run_calculation"
+
+
+def test_openai_chat_policy_factory_without_network():
+    policy = create_policy(
+        "openai-chat",
+        model="example-model",
+        api_key="test-key",
+        base_url="https://example.test/v1",
+    )
+    assert isinstance(policy, OpenAIChatCompletionsPolicy)
+    assert policy.metadata()["base_url"] == "https://example.test/v1"

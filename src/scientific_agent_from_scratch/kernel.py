@@ -32,10 +32,11 @@ class AgentKernel:
         policy: AgentPolicy | None = None,
         policy_backend: str = "deterministic",
         model: str | None = None,
+        base_url: str | None = None,
     ):
         self.project_root = Path(asset_root) if asset_root else Path(__file__).resolve().parents[2]
         self.base_dir = Path(base_dir) if base_dir else Path.cwd()
-        self.policy = policy or create_policy(policy_backend, model=model)
+        self.policy = policy or create_policy(policy_backend, model=model, base_url=base_url)
         self.notes_root = self.project_root / "notes"
         self.skills_root = self.project_root / "skills"
         self.memory_store = MemoryStore(self.base_dir / ".sage_memory")

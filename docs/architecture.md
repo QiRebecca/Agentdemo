@@ -24,6 +24,7 @@ SAGE separates runtime mechanics from policy decisions.
 
 - `DeterministicPolicy` runs without external APIs and is used by the smoke tests.
 - `OpenAIResponsesPolicy` uses the OpenAI Responses API for goal parsing, skill selection, typed tool planning, report drafting, and memory summarization.
+- `OpenAIChatCompletionsPolicy` supports OpenAI-compatible `/chat/completions` providers through a configurable base URL.
 
 Both policies feed the same kernel, tools, memory store, skill registry, handoff logger, and trace logger. This makes the model-backed path real without coupling the framework to one provider-specific orchestration library.
 
